@@ -19,6 +19,8 @@ import (
 	"fmt"
 
 	"github.com/azure/gpu-provisioner/pkg/auth"
+	"github.com/azure/gpu-provisioner/pkg/providers/aks"
+	"github.com/azure/gpu-provisioner/pkg/providers/arc"
 	"github.com/azure/gpu-provisioner/pkg/providers/instance"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -53,7 +55,7 @@ func (f *ProviderFactory) CreateProvider(providerType ProviderType) (instance.In
 	case AKSProvider:
 		return f.createAKSProvider()
 	case ArcProvider:
-		return nil, fmt.Errorf("arc provider not yet implemented")
+		return f.createArcProvider()
 	default:
 		return nil, fmt.Errorf("unsupported provider type: %s", providerType)
 	}
@@ -61,14 +63,22 @@ func (f *ProviderFactory) CreateProvider(providerType ProviderType) (instance.In
 
 // createAKSProvider creates a cloud AKS provider
 func (f *ProviderFactory) createAKSProvider() (instance.InstanceProvider, error) {
-	// For now, delegate to the existing implementation
-	// This will be moved to the AKS package in the next phase
-	azClient, err := instance.CreateAzClient(f.config)
+	azClient, err := aks.CreateAzClient(f.config)
 	if err != nil {
 		return nil, fmt.Errorf("creating AKS client: %w", err)
 	}
 
-	return instance.NewProvider(azClient, f.kubeClient, f.config.ResourceGroup, f.config.ClusterName), nil
+	return aks.NewProvider(azClient, f.kubeClient, f.config.ResourceGroup, f.config.ClusterName), nil
+}
+
+// createArcProvider creates an Arc AKS provider
+func (f *ProviderFactory) createArcProvider() (instance.InstanceProvider, error) {
+	hybridClient, err := arc.CreateHybridClient(f.config)
+	if err != nil {
+		return nil, fmt.Errorf("creating Arc client: %w", err)
+	}
+
+	return arc.NewProvider(hybridClient, f.kubeClient, f.config.ResourceGroup, f.config.ClusterName), nil
 }
 
 // GetSupportedProviderTypes returns the list of supported provider types
