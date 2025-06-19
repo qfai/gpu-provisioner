@@ -4,9 +4,12 @@ This document describes how to configure the GPU Provisioner to work with Azure 
 
 ## Overview
 
-The GPU Provisioner now supports two Azure provider types:
-- **AKS** (default): For cloud-based Azure Kubernetes Service clusters
-- **Arc**: For Azure Arc-enabled Kubernetes clusters
+The GPU Provisioner has been enhanced to support Arc AKS platforms while maintaining full backwards compatibility with existing cloud AKS deployments. This enables customers to use the GPU Provisioner on both:
+
+- **AKS** (default): Cloud-based Azure Kubernetes Service clusters (existing functionality, unchanged)
+- **Arc**: Azure Arc-enabled Kubernetes clusters (new functionality)
+
+**Important**: All existing AKS deployments will continue to work without any changes. This enhancement only adds new Arc AKS support.
 
 ## Configuration
 
@@ -62,21 +65,16 @@ helm install gpu-provisioner ./charts/gpu-provisioner \
   --set controller.env[2].value=your-location
 ```
 
-## Migration from Cloud AKS to Arc AKS
+## Backwards Compatibility
 
-To migrate an existing GPU Provisioner deployment from cloud AKS to Arc AKS:
+**All existing AKS deployments continue to work without any changes.** The provider type defaults to "aks" ensuring:
 
-1. Update the Helm configuration:
-   ```bash
-   helm upgrade gpu-provisioner ./charts/gpu-provisioner \
-     --set settings.azure.providerType=arc \
-     --reuse-values
-   ```
+- Existing GPU Provisioner installations on AKS clusters work unchanged
+- New AKS deployments work the same as before
+- No configuration changes required for AKS users
+- All current functionality preserved
 
-2. Restart the GPU Provisioner pod to pick up the new configuration:
-   ```bash
-   kubectl rollout restart deployment/gpu-provisioner
-   ```
+The Arc AKS support is purely additive - it only adds new capabilities without affecting existing AKS functionality.
 
 ## Environment Variables
 
