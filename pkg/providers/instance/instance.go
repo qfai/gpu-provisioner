@@ -50,6 +50,9 @@ var (
 	AgentPoolNameRegex = regexp.MustCompile(`^[a-z][a-z0-9]{0,11}$`)
 )
 
+// Ensure Provider implements InstanceProvider interface
+var _ InstanceProvider = (*Provider)(nil)
+
 type Provider struct {
 	azClient      *AZClient
 	kubeClient    client.Client

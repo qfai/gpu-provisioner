@@ -21,15 +21,16 @@ import (
 	"os"
 
 	"github.com/azure/gpu-provisioner/pkg/auth"
+	"github.com/azure/gpu-provisioner/pkg/providers/factory"
 	"github.com/azure/gpu-provisioner/pkg/providers/instance"
 	"knative.dev/pkg/logging"
 	"sigs.k8s.io/karpenter/pkg/operator"
 )
 
-// Operator is injected into the AWS CloudProvider's factories
+// Operator is injected into the Azure CloudProvider's factories
 type Operator struct {
 	*operator.Operator
-	InstanceProvider *instance.Provider
+	InstanceProvider instance.InstanceProvider
 }
 
 func NewOperator(ctx context.Context, operator *operator.Operator) (context.Context, *Operator) {
@@ -38,20 +39,18 @@ func NewOperator(ctx context.Context, operator *operator.Operator) (context.Cont
 		logging.FromContext(ctx).Errorf("creating Azure config, %s", err)
 	}
 
-	azClient, err := instance.CreateAzClient(azConfig)
+	// Create provider factory
+	providerFactory := factory.NewProviderFactory(azConfig, operator.GetClient())
+
+	// Create provider based on configuration
+	providerType := factory.ProviderType(azConfig.ProviderType)
+	instanceProvider, err := providerFactory.CreateProvider(providerType)
 	if err != nil {
-		logging.FromContext(ctx).Errorf("creating Azure client, %s", err)
+		logging.FromContext(ctx).Errorf("creating provider, %s", err)
 		// Let us panic here, instead of crashing in the following code.
 		// TODO: move this to an init container
-		panic(fmt.Sprintf("Configure azure client fails. Please ensure federatedcredential has been created for identity %s.", os.Getenv("AZURE_CLIENT_ID")))
+		panic(fmt.Sprintf("Failed to create provider type %s: %v. Please ensure federatedcredential has been created for identity %s.", providerType, err, os.Getenv("AZURE_CLIENT_ID")))
 	}
-
-	instanceProvider := instance.NewProvider(
-		azClient,
-		operator.GetClient(),
-		azConfig.ResourceGroup,
-		azConfig.ClusterName,
-	)
 
 	return ctx, &Operator{
 		Operator:         operator,

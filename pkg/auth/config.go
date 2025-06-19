@@ -53,6 +53,8 @@ type Config struct {
 
 	//Configs only for AKS
 	ClusterName string `json:"clusterName" yaml:"clusterName"`
+	// ProviderType specifies the Azure provider type (aks, arc)
+	ProviderType string `json:"providerType" yaml:"providerType"`
 	// enableDynamicSKUCache defines whether to enable dynamic instance workflow for instance information check
 	EnableDynamicSKUCache bool `json:"enableDynamicSKUCache,omitempty" yaml:"enableDynamicSKUCache,omitempty"`
 	// EnableDetailedCSEMessage defines whether to emit error messages in the CSE error body info
@@ -80,6 +82,10 @@ func (cfg *Config) BaseVars() {
 	cfg.ClusterName = os.Getenv("AZURE_CLUSTER_NAME")
 	cfg.SubscriptionID = os.Getenv("ARM_SUBSCRIPTION_ID")
 	cfg.DeploymentMode = os.Getenv("DEPLOYMENT_MODE")
+	cfg.ProviderType = os.Getenv("AZURE_PROVIDER_TYPE")
+	if cfg.ProviderType == "" {
+		cfg.ProviderType = "aks" // Default to cloud AKS for backwards compatibility
+	}
 }
 
 // BuildAzureConfig returns a Config object for the Azure clients
@@ -131,6 +137,9 @@ func (cfg *Config) validate() error {
 	}
 	if cfg.TenantID == "" {
 		return fmt.Errorf("tenant ID not set")
+	}
+	if cfg.ProviderType != "aks" && cfg.ProviderType != "arc" {
+		return fmt.Errorf("invalid provider type: %s, must be 'aks' or 'arc'", cfg.ProviderType)
 	}
 
 	return nil

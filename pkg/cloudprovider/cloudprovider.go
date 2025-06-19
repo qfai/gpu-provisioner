@@ -35,11 +35,11 @@ import (
 var _ cloudprovider.CloudProvider = &CloudProvider{}
 
 type CloudProvider struct {
-	instanceProvider *instance.Provider
+	instanceProvider instance.InstanceProvider
 	kubeClient       client.Client
 }
 
-func New(instanceProvider *instance.Provider, kubeClient client.Client) *CloudProvider {
+func New(instanceProvider instance.InstanceProvider, kubeClient client.Client) *CloudProvider {
 	return &CloudProvider{
 		instanceProvider: instanceProvider,
 		kubeClient:       kubeClient,
