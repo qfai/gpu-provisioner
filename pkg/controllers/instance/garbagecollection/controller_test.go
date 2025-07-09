@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/hybridcontainerservice/armhybridcontainerservice"
 	"github.com/azure/gpu-provisioner/pkg/cloudprovider"
 	"github.com/azure/gpu-provisioner/pkg/fake"
 	"github.com/azure/gpu-provisioner/pkg/providers/instance"
@@ -42,8 +42,8 @@ func TestReconcile(t *testing.T) {
 	testcases := map[string]struct {
 		nodeClaims              []*karpenterv1.NodeClaim
 		leakedNodeClaims        []*karpenterv1.NodeClaim
-		mockListAgentPoolResp   func(nodeClaims []*karpenterv1.NodeClaim) *runtime.Pager[armcontainerservice.AgentPoolsClientListResponse]
-		mockDeleteAgentPoolResp func(mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientDeleteResponse], error)
+		mockListAgentPoolResp   func(nodeClaims []*karpenterv1.NodeClaim) *runtime.Pager[armhybridcontainerservice.AgentPoolsClientListResponse]
+		mockDeleteAgentPoolResp func(mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientDeleteResponse], error)
 		expectedError           error
 	}{
 		"garbage collection leaked instance without providerID successfully": {
@@ -72,33 +72,33 @@ func TestReconcile(t *testing.T) {
 					},
 				}),
 			},
-			mockListAgentPoolResp: func(nodeClaims []*karpenterv1.NodeClaim) *runtime.Pager[armcontainerservice.AgentPoolsClientListResponse] {
-				var agentPools []*armcontainerservice.AgentPool
+			mockListAgentPoolResp: func(nodeClaims []*karpenterv1.NodeClaim) *runtime.Pager[armhybridcontainerservice.AgentPoolsClientListResponse] {
+				var agentPools []*armhybridcontainerservice.AgentPool
 				for i := range nodeClaims {
 					ap := fake.CreateAgentPoolObjWithNodeClaim(nodeClaims[i])
 					agentPools = append(agentPools, &ap)
 				}
-				return runtime.NewPager(runtime.PagingHandler[armcontainerservice.AgentPoolsClientListResponse]{
-					More: func(page armcontainerservice.AgentPoolsClientListResponse) bool {
+				return runtime.NewPager(runtime.PagingHandler[armhybridcontainerservice.AgentPoolsClientListResponse]{
+					More: func(page armhybridcontainerservice.AgentPoolsClientListResponse) bool {
 						return false
 					},
-					Fetcher: func(ctx context.Context, page *armcontainerservice.AgentPoolsClientListResponse) (armcontainerservice.AgentPoolsClientListResponse, error) {
-						return armcontainerservice.AgentPoolsClientListResponse{
-							AgentPoolListResult: armcontainerservice.AgentPoolListResult{
+					Fetcher: func(ctx context.Context, page *armhybridcontainerservice.AgentPoolsClientListResponse) (armhybridcontainerservice.AgentPoolsClientListResponse, error) {
+						return armhybridcontainerservice.AgentPoolsClientListResponse{
+							AgentPoolListResult: armhybridcontainerservice.AgentPoolListResult{
 								Value: agentPools,
 							},
 						}, nil
 					},
 				})
 			},
-			mockDeleteAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientDeleteResponse], error) {
-				delResp := armcontainerservice.AgentPoolsClientDeleteResponse{}
+			mockDeleteAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientDeleteResponse], error) {
+				delResp := armhybridcontainerservice.AgentPoolsClientDeleteResponse{}
 				resp := http.Response{Status: "200 OK", StatusCode: http.StatusOK, Body: http.NoBody}
 
 				mockHandler.EXPECT().Done().Return(true).Times(3)
 				mockHandler.EXPECT().Result(gomock.Any(), gomock.Any()).Return(nil)
 
-				pollingOptions := &runtime.NewPollerOptions[armcontainerservice.AgentPoolsClientDeleteResponse]{
+				pollingOptions := &runtime.NewPollerOptions[armhybridcontainerservice.AgentPoolsClientDeleteResponse]{
 					Handler:  mockHandler,
 					Response: &delResp,
 				}
@@ -134,33 +134,33 @@ func TestReconcile(t *testing.T) {
 					},
 				}),
 			},
-			mockListAgentPoolResp: func(nodeClaims []*karpenterv1.NodeClaim) *runtime.Pager[armcontainerservice.AgentPoolsClientListResponse] {
-				var agentPools []*armcontainerservice.AgentPool
+			mockListAgentPoolResp: func(nodeClaims []*karpenterv1.NodeClaim) *runtime.Pager[armhybridcontainerservice.AgentPoolsClientListResponse] {
+				var agentPools []*armhybridcontainerservice.AgentPool
 				for i := range nodeClaims {
 					ap := fake.CreateAgentPoolObjWithNodeClaim(nodeClaims[i])
 					agentPools = append(agentPools, &ap)
 				}
-				return runtime.NewPager(runtime.PagingHandler[armcontainerservice.AgentPoolsClientListResponse]{
-					More: func(page armcontainerservice.AgentPoolsClientListResponse) bool {
+				return runtime.NewPager(runtime.PagingHandler[armhybridcontainerservice.AgentPoolsClientListResponse]{
+					More: func(page armhybridcontainerservice.AgentPoolsClientListResponse) bool {
 						return false
 					},
-					Fetcher: func(ctx context.Context, page *armcontainerservice.AgentPoolsClientListResponse) (armcontainerservice.AgentPoolsClientListResponse, error) {
-						return armcontainerservice.AgentPoolsClientListResponse{
-							AgentPoolListResult: armcontainerservice.AgentPoolListResult{
+					Fetcher: func(ctx context.Context, page *armhybridcontainerservice.AgentPoolsClientListResponse) (armhybridcontainerservice.AgentPoolsClientListResponse, error) {
+						return armhybridcontainerservice.AgentPoolsClientListResponse{
+							AgentPoolListResult: armhybridcontainerservice.AgentPoolListResult{
 								Value: agentPools,
 							},
 						}, nil
 					},
 				})
 			},
-			mockDeleteAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientDeleteResponse], error) {
-				delResp := armcontainerservice.AgentPoolsClientDeleteResponse{}
+			mockDeleteAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientDeleteResponse], error) {
+				delResp := armhybridcontainerservice.AgentPoolsClientDeleteResponse{}
 				resp := http.Response{Status: "200 OK", StatusCode: http.StatusOK, Body: http.NoBody}
 
 				mockHandler.EXPECT().Done().Return(true).Times(3)
 				mockHandler.EXPECT().Result(gomock.Any(), gomock.Any()).Return(nil)
 
-				pollingOptions := &runtime.NewPollerOptions[armcontainerservice.AgentPoolsClientDeleteResponse]{
+				pollingOptions := &runtime.NewPollerOptions[armhybridcontainerservice.AgentPoolsClientDeleteResponse]{
 					Handler:  mockHandler,
 					Response: &delResp,
 				}
@@ -196,26 +196,26 @@ func TestReconcile(t *testing.T) {
 					},
 				}),
 			},
-			mockListAgentPoolResp: func(nodeClaims []*karpenterv1.NodeClaim) *runtime.Pager[armcontainerservice.AgentPoolsClientListResponse] {
-				var agentPools []*armcontainerservice.AgentPool
+			mockListAgentPoolResp: func(nodeClaims []*karpenterv1.NodeClaim) *runtime.Pager[armhybridcontainerservice.AgentPoolsClientListResponse] {
+				var agentPools []*armhybridcontainerservice.AgentPool
 				for i := range nodeClaims {
 					ap := fake.CreateAgentPoolObjWithNodeClaim(nodeClaims[i])
 					agentPools = append(agentPools, &ap)
 				}
-				return runtime.NewPager(runtime.PagingHandler[armcontainerservice.AgentPoolsClientListResponse]{
-					More: func(page armcontainerservice.AgentPoolsClientListResponse) bool {
+				return runtime.NewPager(runtime.PagingHandler[armhybridcontainerservice.AgentPoolsClientListResponse]{
+					More: func(page armhybridcontainerservice.AgentPoolsClientListResponse) bool {
 						return false
 					},
-					Fetcher: func(ctx context.Context, page *armcontainerservice.AgentPoolsClientListResponse) (armcontainerservice.AgentPoolsClientListResponse, error) {
-						return armcontainerservice.AgentPoolsClientListResponse{
-							AgentPoolListResult: armcontainerservice.AgentPoolListResult{
+					Fetcher: func(ctx context.Context, page *armhybridcontainerservice.AgentPoolsClientListResponse) (armhybridcontainerservice.AgentPoolsClientListResponse, error) {
+						return armhybridcontainerservice.AgentPoolsClientListResponse{
+							AgentPoolListResult: armhybridcontainerservice.AgentPoolListResult{
 								Value: agentPools,
 							},
 						}, nil
 					},
 				})
 			},
-			mockDeleteAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientDeleteResponse], error) {
+			mockDeleteAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientDeleteResponse], error) {
 				return nil, errors.New("internal server error")
 			},
 			expectedError: errors.New("internal server error"),
@@ -235,7 +235,7 @@ func TestReconcile(t *testing.T) {
 			}
 
 			if tc.mockDeleteAgentPoolResp != nil {
-				mockHandler := fake.NewMockPollingHandler[armcontainerservice.AgentPoolsClientDeleteResponse](mockCtrl)
+				mockHandler := fake.NewMockPollingHandler[armhybridcontainerservice.AgentPoolsClientDeleteResponse](mockCtrl)
 				resp, err := tc.mockDeleteAgentPoolResp(mockHandler)
 				agentPoolMocks.EXPECT().BeginDelete(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(resp, err)
 			}

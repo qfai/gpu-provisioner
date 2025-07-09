@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/hybridcontainerservice/armhybridcontainerservice"
 	"github.com/azure/gpu-provisioner/pkg/fake"
 	"github.com/azure/gpu-provisioner/pkg/providers/instance"
 	"github.com/samber/lo"
@@ -40,7 +40,7 @@ import (
 func TestCreate(t *testing.T) {
 	testcases := map[string]struct {
 		nodeClaim         *karpenterv1.NodeClaim
-		mockAgentPoolResp func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error)
+		mockAgentPoolResp func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error)
 		expectedError     bool
 	}{
 		"successfully create instance": {
@@ -57,10 +57,10 @@ func TestCreate(t *testing.T) {
 						Values:   []string{"Standard_NC6s_v3"},
 					},
 				}),
-			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error) {
+			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error) {
 				ap := fake.CreateAgentPoolObjWithNodeClaim(nodeClaim)
 
-				createResp := armcontainerservice.AgentPoolsClientCreateOrUpdateResponse{
+				createResp := armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse{
 					AgentPool: ap,
 				}
 				resp := http.Response{StatusCode: http.StatusAccepted, Body: http.NoBody}
@@ -68,7 +68,7 @@ func TestCreate(t *testing.T) {
 				mockHandler.EXPECT().Done().Return(true).Times(3)
 				mockHandler.EXPECT().Result(gomock.Any(), gomock.Any()).Return(nil)
 
-				pollingOptions := &runtime.NewPollerOptions[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]{
+				pollingOptions := &runtime.NewPollerOptions[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse]{
 					Handler:  mockHandler,
 					Response: &createResp,
 				}
@@ -98,7 +98,7 @@ func TestCreate(t *testing.T) {
 			// prepare agentPoolClient with poller
 			agentPoolMocks := fake.NewMockAgentPoolsAPI(mockCtrl)
 			if tc.mockAgentPoolResp != nil {
-				mockHandler := fake.NewMockPollingHandler[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse](mockCtrl)
+				mockHandler := fake.NewMockPollingHandler[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse](mockCtrl)
 				p, err := tc.mockAgentPoolResp(tc.nodeClaim, mockHandler)
 				agentPoolMocks.EXPECT().BeginCreateOrUpdate(gomock.Any(), gomock.Any(), gomock.Any(), tc.nodeClaim.Name, gomock.Any(), gomock.Any()).Return(p, err)
 			}
@@ -139,7 +139,7 @@ func TestCreate(t *testing.T) {
 func TestList(t *testing.T) {
 	testcases := map[string]struct {
 		nodeClaims        []*karpenterv1.NodeClaim
-		mockAgentPoolResp func(nodeClaims []*karpenterv1.NodeClaim) *runtime.Pager[armcontainerservice.AgentPoolsClientListResponse]
+		mockAgentPoolResp func(nodeClaims []*karpenterv1.NodeClaim) *runtime.Pager[armhybridcontainerservice.AgentPoolsClientListResponse]
 		expectedError     bool
 	}{
 		"successfully list instances": {
@@ -159,19 +159,19 @@ func TestList(t *testing.T) {
 					},
 				}),
 			},
-			mockAgentPoolResp: func(nodeClaims []*karpenterv1.NodeClaim) *runtime.Pager[armcontainerservice.AgentPoolsClientListResponse] {
-				var agentPools []*armcontainerservice.AgentPool
+			mockAgentPoolResp: func(nodeClaims []*karpenterv1.NodeClaim) *runtime.Pager[armhybridcontainerservice.AgentPoolsClientListResponse] {
+				var agentPools []*armhybridcontainerservice.AgentPool
 				for i := range nodeClaims {
 					ap := fake.CreateAgentPoolObjWithNodeClaim(nodeClaims[i])
 					agentPools = append(agentPools, &ap)
 				}
-				return runtime.NewPager(runtime.PagingHandler[armcontainerservice.AgentPoolsClientListResponse]{
-					More: func(page armcontainerservice.AgentPoolsClientListResponse) bool {
+				return runtime.NewPager(runtime.PagingHandler[armhybridcontainerservice.AgentPoolsClientListResponse]{
+					More: func(page armhybridcontainerservice.AgentPoolsClientListResponse) bool {
 						return false
 					},
-					Fetcher: func(ctx context.Context, page *armcontainerservice.AgentPoolsClientListResponse) (armcontainerservice.AgentPoolsClientListResponse, error) {
-						return armcontainerservice.AgentPoolsClientListResponse{
-							AgentPoolListResult: armcontainerservice.AgentPoolListResult{
+					Fetcher: func(ctx context.Context, page *armhybridcontainerservice.AgentPoolsClientListResponse) (armhybridcontainerservice.AgentPoolsClientListResponse, error) {
+						return armhybridcontainerservice.AgentPoolsClientListResponse{
+							AgentPoolListResult: armhybridcontainerservice.AgentPoolListResult{
 								Value: agentPools,
 							},
 						}, nil
@@ -181,13 +181,13 @@ func TestList(t *testing.T) {
 			expectedError: false,
 		},
 		"failed to list instances": {
-			mockAgentPoolResp: func(nodeClaims []*karpenterv1.NodeClaim) *runtime.Pager[armcontainerservice.AgentPoolsClientListResponse] {
-				return runtime.NewPager(runtime.PagingHandler[armcontainerservice.AgentPoolsClientListResponse]{
-					More: func(page armcontainerservice.AgentPoolsClientListResponse) bool {
+			mockAgentPoolResp: func(nodeClaims []*karpenterv1.NodeClaim) *runtime.Pager[armhybridcontainerservice.AgentPoolsClientListResponse] {
+				return runtime.NewPager(runtime.PagingHandler[armhybridcontainerservice.AgentPoolsClientListResponse]{
+					More: func(page armhybridcontainerservice.AgentPoolsClientListResponse) bool {
 						return false
 					},
-					Fetcher: func(ctx context.Context, page *armcontainerservice.AgentPoolsClientListResponse) (armcontainerservice.AgentPoolsClientListResponse, error) {
-						return armcontainerservice.AgentPoolsClientListResponse{}, errors.New("Failed to fetch page")
+					Fetcher: func(ctx context.Context, page *armhybridcontainerservice.AgentPoolsClientListResponse) (armhybridcontainerservice.AgentPoolsClientListResponse, error) {
+						return armhybridcontainerservice.AgentPoolsClientListResponse{}, errors.New("Failed to fetch page")
 					},
 				})
 			},
@@ -237,7 +237,7 @@ func TestList(t *testing.T) {
 func TestGet(t *testing.T) {
 	testcases := map[string]struct {
 		nodeClaim                *karpenterv1.NodeClaim
-		mockAgentPoolResp        func(nodeClaim *karpenterv1.NodeClaim) (armcontainerservice.AgentPoolsClientGetResponse, error)
+		mockAgentPoolResp        func(nodeClaim *karpenterv1.NodeClaim) (armhybridcontainerservice.AgentPoolsClientGetResponse, error)
 		expectedError            error
 		IsNodeClaimNotFoundError bool
 	}{
@@ -249,8 +249,8 @@ func TestGet(t *testing.T) {
 					Values:   []string{"Standard_NC6s_v3"},
 				},
 			}),
-			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim) (armcontainerservice.AgentPoolsClientGetResponse, error) {
-				return armcontainerservice.AgentPoolsClientGetResponse{AgentPool: fake.CreateAgentPoolObjWithNodeClaim(nodeClaim)}, nil
+			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim) (armhybridcontainerservice.AgentPoolsClientGetResponse, error) {
+				return armhybridcontainerservice.AgentPoolsClientGetResponse{AgentPool: fake.CreateAgentPoolObjWithNodeClaim(nodeClaim)}, nil
 			},
 			expectedError: nil,
 		},
@@ -262,8 +262,8 @@ func TestGet(t *testing.T) {
 					Values:   []string{"Standard_NC6s_v3"},
 				},
 			}),
-			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim) (armcontainerservice.AgentPoolsClientGetResponse, error) {
-				return armcontainerservice.AgentPoolsClientGetResponse{AgentPool: fake.CreateAgentPoolObjWithNodeClaim(nodeClaim)}, fmt.Errorf("internal server error")
+			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim) (armhybridcontainerservice.AgentPoolsClientGetResponse, error) {
+				return armhybridcontainerservice.AgentPoolsClientGetResponse{AgentPool: fake.CreateAgentPoolObjWithNodeClaim(nodeClaim)}, fmt.Errorf("internal server error")
 			},
 			expectedError: errors.New("internal server error"),
 		},
@@ -275,8 +275,8 @@ func TestGet(t *testing.T) {
 					Values:   []string{"Standard_NC6s_v3"},
 				},
 			}),
-			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim) (armcontainerservice.AgentPoolsClientGetResponse, error) {
-				return armcontainerservice.AgentPoolsClientGetResponse{AgentPool: fake.CreateAgentPoolObjWithNodeClaim(nodeClaim)}, fmt.Errorf("Agent Pool not found")
+			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim) (armhybridcontainerservice.AgentPoolsClientGetResponse, error) {
+				return armhybridcontainerservice.AgentPoolsClientGetResponse{AgentPool: fake.CreateAgentPoolObjWithNodeClaim(nodeClaim)}, fmt.Errorf("Agent Pool not found")
 			},
 			IsNodeClaimNotFoundError: true,
 		},
@@ -319,7 +319,7 @@ func TestGet(t *testing.T) {
 func TestDelete(t *testing.T) {
 	testcases := map[string]struct {
 		nodeClaim         *karpenterv1.NodeClaim
-		mockAgentPoolResp func(mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientDeleteResponse], error)
+		mockAgentPoolResp func(mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientDeleteResponse], error)
 		expectedError     error
 	}{
 		"successfully delete instance": {
@@ -330,14 +330,14 @@ func TestDelete(t *testing.T) {
 					Values:   []string{"Standard_NC6s_v3"},
 				},
 			}),
-			mockAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientDeleteResponse], error) {
-				delResp := armcontainerservice.AgentPoolsClientDeleteResponse{}
+			mockAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientDeleteResponse], error) {
+				delResp := armhybridcontainerservice.AgentPoolsClientDeleteResponse{}
 				resp := http.Response{Status: "200 OK", StatusCode: http.StatusOK, Body: http.NoBody}
 
 				mockHandler.EXPECT().Done().Return(true).Times(3)
 				mockHandler.EXPECT().Result(gomock.Any(), gomock.Any()).Return(nil)
 
-				pollingOptions := &runtime.NewPollerOptions[armcontainerservice.AgentPoolsClientDeleteResponse]{
+				pollingOptions := &runtime.NewPollerOptions[armhybridcontainerservice.AgentPoolsClientDeleteResponse]{
 					Handler:  mockHandler,
 					Response: &delResp,
 				}
@@ -355,7 +355,7 @@ func TestDelete(t *testing.T) {
 					Values:   []string{"Standard_NC6s_v3"},
 				},
 			}),
-			mockAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientDeleteResponse], error) {
+			mockAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientDeleteResponse], error) {
 				return nil, errors.New("internal server error")
 			},
 			expectedError: errors.New("internal server error"),
@@ -370,7 +370,7 @@ func TestDelete(t *testing.T) {
 			// prepare agentPoolClient with poller
 			agentPoolMocks := fake.NewMockAgentPoolsAPI(mockCtrl)
 			if tc.mockAgentPoolResp != nil {
-				mockHandler := fake.NewMockPollingHandler[armcontainerservice.AgentPoolsClientDeleteResponse](mockCtrl)
+				mockHandler := fake.NewMockPollingHandler[armhybridcontainerservice.AgentPoolsClientDeleteResponse](mockCtrl)
 				resp, err := tc.mockAgentPoolResp(mockHandler)
 				agentPoolMocks.EXPECT().BeginDelete(gomock.Any(), gomock.Any(), gomock.Any(), tc.nodeClaim.Name, gomock.Any()).Return(resp, err)
 			}

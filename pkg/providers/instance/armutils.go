@@ -19,14 +19,14 @@ import (
 	"context"
 
 	sdkerrors "github.com/Azure/azure-sdk-for-go-extensions/pkg/errors"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/hybridcontainerservice/armhybridcontainerservice"
 	"k8s.io/klog/v2"
 )
 
-func createAgentPool(ctx context.Context, client AgentPoolsAPI, rg, apName, clusterName string, ap armcontainerservice.AgentPool) (*armcontainerservice.AgentPool, error) {
+func createAgentPool(ctx context.Context, client AgentPoolsAPI, connectedClusterResourceURI, apName string, ap armhybridcontainerservice.AgentPool) (*armhybridcontainerservice.AgentPool, error) {
 	klog.InfoS("createAgentPool", "agentpool", apName)
 
-	poller, err := client.BeginCreateOrUpdate(ctx, rg, clusterName, apName, ap, nil)
+	poller, err := client.BeginCreateOrUpdate(ctx, connectedClusterResourceURI, apName, ap, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -37,9 +37,9 @@ func createAgentPool(ctx context.Context, client AgentPoolsAPI, rg, apName, clus
 	return &res.AgentPool, nil
 }
 
-func deleteAgentPool(ctx context.Context, client AgentPoolsAPI, rg, clusterName, apName string) error {
+func deleteAgentPool(ctx context.Context, client AgentPoolsAPI, connectedClusterResourceURI, apName string) error {
 	klog.InfoS("deleteAgentPool", "agentpool", apName)
-	poller, err := client.BeginDelete(ctx, rg, clusterName, apName, nil)
+	poller, err := client.BeginDelete(ctx, connectedClusterResourceURI, apName, nil)
 	if err != nil {
 		azErr := sdkerrors.IsResponseError(err)
 		if azErr != nil && azErr.ErrorCode == "NotFound" {
@@ -57,8 +57,8 @@ func deleteAgentPool(ctx context.Context, client AgentPoolsAPI, rg, clusterName,
 	return err
 }
 
-func getAgentPool(ctx context.Context, client AgentPoolsAPI, rg, clusterName, apName string) (*armcontainerservice.AgentPool, error) {
-	resp, err := client.Get(ctx, rg, clusterName, apName, nil)
+func getAgentPool(ctx context.Context, client AgentPoolsAPI, connectedClusterResourceURI, apName string) (*armhybridcontainerservice.AgentPool, error) {
+	resp, err := client.Get(ctx, connectedClusterResourceURI, apName, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -66,9 +66,9 @@ func getAgentPool(ctx context.Context, client AgentPoolsAPI, rg, clusterName, ap
 	return &resp.AgentPool, nil
 }
 
-func listAgentPools(ctx context.Context, client AgentPoolsAPI, rg, clusterName string) ([]*armcontainerservice.AgentPool, error) {
-	var apList []*armcontainerservice.AgentPool
-	pager := client.NewListPager(rg, clusterName, nil)
+func listAgentPools(ctx context.Context, client AgentPoolsAPI, connectedClusterResourceURI string) ([]*armhybridcontainerservice.AgentPool, error) {
+	var apList []*armhybridcontainerservice.AgentPool
+	pager := client.NewListByProvisionedClusterPager(connectedClusterResourceURI, nil)
 	for pager.More() {
 		page, err := pager.NextPage(ctx)
 		if err != nil {

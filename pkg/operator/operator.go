@@ -49,6 +49,7 @@ func NewOperator(ctx context.Context, operator *operator.Operator) (context.Cont
 	instanceProvider := instance.NewProvider(
 		azClient,
 		operator.GetClient(),
+		azConfig.SubscriptionID,
 		azConfig.ResourceGroup,
 		azConfig.ClusterName,
 	)

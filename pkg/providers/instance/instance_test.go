@@ -25,7 +25,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/hybridcontainerservice/armhybridcontainerservice"
 	"github.com/azure/gpu-provisioner/pkg/fake"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
@@ -43,7 +43,7 @@ func TestNewAgentPoolObject(t *testing.T) {
 		name        string
 		vmSize      string
 		nodeClaim   *karpenterv1.NodeClaim
-		expected    armcontainerservice.AgentPool
+		expected    armhybridcontainerservice.AgentPool
 		expectedErr bool
 	}{
 		{
@@ -54,8 +54,8 @@ func TestNewAgentPoolObject(t *testing.T) {
 					v1.ResourceStorage: lo.FromPtr(resource.NewQuantity(30*1024*1024*1024, resource.DecimalSI)),
 				},
 			}, []v1.NodeSelectorRequirement{}),
-			expected: GetAgentPoolObj(armcontainerservice.AgentPoolTypeVirtualMachineScaleSets,
-				armcontainerservice.ScaleSetPriorityRegular, map[string]*string{"test": to.Ptr("test")},
+			expected: GetAgentPoolObj(armhybridcontainerservice.AgentPoolTypeVirtualMachineScaleSets,
+				armhybridcontainerservice.ScaleSetPriorityRegular, map[string]*string{"test": to.Ptr("test")},
 				[]*string{}, 30, "Standard_NC6s_v3"),
 			expectedErr: false,
 		},
@@ -65,7 +65,7 @@ func TestNewAgentPoolObject(t *testing.T) {
 			nodeClaim: fake.GetNodeClaimObj("nodeclaim-test", map[string]string{"test": "test"}, []v1.Taint{}, karpenterv1.ResourceRequirements{
 				Requests: v1.ResourceList{},
 			}, []v1.NodeSelectorRequirement{}),
-			expected:    armcontainerservice.AgentPool{},
+			expected:    armhybridcontainerservice.AgentPool{},
 			expectedErr: true,
 		},
 	}
@@ -87,8 +87,8 @@ func TestGet(t *testing.T) {
 	testCases := []struct {
 		name              string
 		id                string
-		mockAgentPool     armcontainerservice.AgentPool
-		mockAgentPoolResp func(ap armcontainerservice.AgentPool) armcontainerservice.AgentPoolsClientGetResponse
+		mockAgentPool     armhybridcontainerservice.AgentPool
+		mockAgentPoolResp func(ap armhybridcontainerservice.AgentPool) armhybridcontainerservice.AgentPoolsClientGetResponse
 		callK8sMocks      func(c *fake.MockClient)
 		expectedError     error
 	}{
@@ -96,8 +96,8 @@ func TestGet(t *testing.T) {
 			name:          "Successfully Get instance from agent pool",
 			id:            "azure:///subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/nodeRG/providers/Microsoft.Compute/virtualMachineScaleSets/aks-agentpool0-20562481-vmss/virtualMachines/0",
 			mockAgentPool: GetAgentPoolObjWithName("agentpool0", "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/nodeRG/providers/Microsoft.Compute/virtualMachineScaleSets/aks-agentpool0-20562481-vmss", "Standard_NC6s_v3"),
-			mockAgentPoolResp: func(ap armcontainerservice.AgentPool) armcontainerservice.AgentPoolsClientGetResponse {
-				return armcontainerservice.AgentPoolsClientGetResponse{AgentPool: ap}
+			mockAgentPoolResp: func(ap armhybridcontainerservice.AgentPool) armhybridcontainerservice.AgentPoolsClientGetResponse {
+				return armhybridcontainerservice.AgentPoolsClientGetResponse{AgentPool: ap}
 			},
 			callK8sMocks: func(c *fake.MockClient) {
 				nodeList := GetNodeList([]v1.Node{ReadyNode})
@@ -116,8 +116,8 @@ func TestGet(t *testing.T) {
 		{
 			name: "Fail to get instance because agentPool.Get returns a failure",
 			id:   "azure:///subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/nodeRG/providers/Microsoft.Compute/virtualMachineScaleSets/aks-agentpool0-20562481-vmss/virtualMachines/0",
-			mockAgentPoolResp: func(ap armcontainerservice.AgentPool) armcontainerservice.AgentPoolsClientGetResponse {
-				return armcontainerservice.AgentPoolsClientGetResponse{AgentPool: ap}
+			mockAgentPoolResp: func(ap armhybridcontainerservice.AgentPool) armhybridcontainerservice.AgentPoolsClientGetResponse {
+				return armhybridcontainerservice.AgentPoolsClientGetResponse{AgentPool: ap}
 			},
 			expectedError: errors.New("Failed to get agent pool"),
 		},
@@ -163,7 +163,7 @@ func TestFromAgentPoolToInstance(t *testing.T) {
 	testCases := []struct {
 		name          string
 		callK8sMocks  func(c *fake.MockClient)
-		mockAgentPool armcontainerservice.AgentPool
+		mockAgentPool armhybridcontainerservice.AgentPool
 		isInstanceNil bool
 		expectedError error
 	}{
@@ -239,20 +239,20 @@ func TestDelete(t *testing.T) {
 	testCases := []struct {
 		name              string
 		apName            string
-		mockAgentPoolResp func(mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientDeleteResponse], error)
+		mockAgentPoolResp func(mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientDeleteResponse], error)
 		expectedError     error
 	}{
 		{
 			name:   "Successfully delete instance",
 			apName: "agentpool0",
-			mockAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientDeleteResponse], error) {
-				delResp := armcontainerservice.AgentPoolsClientDeleteResponse{}
+			mockAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientDeleteResponse], error) {
+				delResp := armhybridcontainerservice.AgentPoolsClientDeleteResponse{}
 				resp := http.Response{Status: "200 OK", StatusCode: http.StatusOK, Body: http.NoBody}
 
 				mockHandler.EXPECT().Done().Return(true).Times(3)
 				mockHandler.EXPECT().Result(gomock.Any(), gomock.Any()).Return(nil)
 
-				pollingOptions := &runtime.NewPollerOptions[armcontainerservice.AgentPoolsClientDeleteResponse]{
+				pollingOptions := &runtime.NewPollerOptions[armhybridcontainerservice.AgentPoolsClientDeleteResponse]{
 					Handler:  mockHandler,
 					Response: &delResp,
 				}
@@ -264,14 +264,14 @@ func TestDelete(t *testing.T) {
 		{
 			name:   "Successfully deletes instance because poller returns a 404 not found error",
 			apName: "agentpool0",
-			mockAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientDeleteResponse], error) {
-				delResp := armcontainerservice.AgentPoolsClientDeleteResponse{}
+			mockAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientDeleteResponse], error) {
+				delResp := armhybridcontainerservice.AgentPoolsClientDeleteResponse{}
 				resp := http.Response{StatusCode: http.StatusBadRequest, Body: http.NoBody}
 
 				mockHandler.EXPECT().Done().Return(false)
 				mockHandler.EXPECT().Poll(gomock.Any()).Return(&resp, NotFoundAzError())
 
-				pollingOptions := &runtime.NewPollerOptions[armcontainerservice.AgentPoolsClientDeleteResponse]{
+				pollingOptions := &runtime.NewPollerOptions[armhybridcontainerservice.AgentPoolsClientDeleteResponse]{
 					Handler:  mockHandler,
 					Response: &delResp,
 				}
@@ -283,14 +283,14 @@ func TestDelete(t *testing.T) {
 		{
 			name:   "Fail to delete instance because poller returns error",
 			apName: "agentpool0",
-			mockAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientDeleteResponse], error) {
-				delResp := armcontainerservice.AgentPoolsClientDeleteResponse{}
+			mockAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientDeleteResponse], error) {
+				delResp := armhybridcontainerservice.AgentPoolsClientDeleteResponse{}
 				resp := http.Response{StatusCode: http.StatusBadRequest, Body: http.NoBody}
 
 				mockHandler.EXPECT().Done().Return(false)
 				mockHandler.EXPECT().Poll(gomock.Any()).Return(&resp, errors.New("Failed to fetch latest status of operation"))
 
-				pollingOptions := &runtime.NewPollerOptions[armcontainerservice.AgentPoolsClientDeleteResponse]{
+				pollingOptions := &runtime.NewPollerOptions[armhybridcontainerservice.AgentPoolsClientDeleteResponse]{
 					Handler:  mockHandler,
 					Response: &delResp,
 				}
@@ -303,14 +303,14 @@ func TestDelete(t *testing.T) {
 		{
 			name:   "Successfully delete instance because agentPool.Delete returns a NotFound error",
 			apName: "agentpool0",
-			mockAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientDeleteResponse], error) {
+			mockAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientDeleteResponse], error) {
 				return nil, NotFoundAzError()
 			},
 		},
 		{
 			name:   "Fail to delete instance because agentPool.Delete returns a failure",
 			apName: "agentpool0",
-			mockAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientDeleteResponse], error) {
+			mockAgentPoolResp: func(mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientDeleteResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientDeleteResponse], error) {
 				return nil, errors.New("Failed to delete agent pool")
 			},
 			expectedError: errors.New("Failed to delete agent pool"),
@@ -324,7 +324,7 @@ func TestDelete(t *testing.T) {
 
 			agentPoolMocks := fake.NewMockAgentPoolsAPI(mockCtrl)
 			if tc.mockAgentPoolResp != nil {
-				mockHandler := fake.NewMockPollingHandler[armcontainerservice.AgentPoolsClientDeleteResponse](mockCtrl)
+				mockHandler := fake.NewMockPollingHandler[armhybridcontainerservice.AgentPoolsClientDeleteResponse](mockCtrl)
 
 				p, err := tc.mockAgentPoolResp(mockHandler)
 				agentPoolMocks.EXPECT().BeginDelete(gomock.Any(), gomock.Any(), gomock.Any(), "agentpool0", gomock.Any()).Return(p, err)
@@ -347,29 +347,29 @@ func TestDelete(t *testing.T) {
 func TestList(t *testing.T) {
 	testCases := []struct {
 		name              string
-		mockAgentPoolList func() []*armcontainerservice.AgentPool
-		mockAgentPoolResp func(apList []*armcontainerservice.AgentPool) *runtime.Pager[armcontainerservice.AgentPoolsClientListResponse]
+		mockAgentPoolList func() []*armhybridcontainerservice.AgentPool
+		mockAgentPoolResp func(apList []*armhybridcontainerservice.AgentPool) *runtime.Pager[armhybridcontainerservice.AgentPoolsClientListResponse]
 		callK8sMocks      func(c *fake.MockClient)
 		expectedError     error
 	}{
 		{
 			name: "Successfully list instances",
-			mockAgentPoolList: func() []*armcontainerservice.AgentPool {
+			mockAgentPoolList: func() []*armhybridcontainerservice.AgentPool {
 				ap := GetAgentPoolObjWithName("agentpool0", "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/nodeRG/providers/Microsoft.Compute/virtualMachineScaleSets/aks-agentpool0-20562481-vmss", "Standard_NC6s_v3")
 				ap1 := GetAgentPoolObjWithName("agentpool1", "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/nodeRG/providers/Microsoft.Compute/virtualMachineScaleSets/aks-agentpool0-20562481-vmss", "Standard_NC6s_v3")
 
-				return []*armcontainerservice.AgentPool{
+				return []*armhybridcontainerservice.AgentPool{
 					&ap, &ap1,
 				}
 			},
-			mockAgentPoolResp: func(apList []*armcontainerservice.AgentPool) *runtime.Pager[armcontainerservice.AgentPoolsClientListResponse] {
-				return runtime.NewPager(runtime.PagingHandler[armcontainerservice.AgentPoolsClientListResponse]{
-					More: func(page armcontainerservice.AgentPoolsClientListResponse) bool {
+			mockAgentPoolResp: func(apList []*armhybridcontainerservice.AgentPool) *runtime.Pager[armhybridcontainerservice.AgentPoolsClientListResponse] {
+				return runtime.NewPager(runtime.PagingHandler[armhybridcontainerservice.AgentPoolsClientListResponse]{
+					More: func(page armhybridcontainerservice.AgentPoolsClientListResponse) bool {
 						return false
 					},
-					Fetcher: func(ctx context.Context, page *armcontainerservice.AgentPoolsClientListResponse) (armcontainerservice.AgentPoolsClientListResponse, error) {
-						return armcontainerservice.AgentPoolsClientListResponse{
-							AgentPoolListResult: armcontainerservice.AgentPoolListResult{
+					Fetcher: func(ctx context.Context, page *armhybridcontainerservice.AgentPoolsClientListResponse) (armhybridcontainerservice.AgentPoolsClientListResponse, error) {
+						return armhybridcontainerservice.AgentPoolsClientListResponse{
+							AgentPoolListResult: armhybridcontainerservice.AgentPoolListResult{
 								Value: apList,
 							},
 						}, nil
@@ -392,16 +392,16 @@ func TestList(t *testing.T) {
 		},
 		{
 			name: "Fail to list instances because pager fails to fetch page",
-			mockAgentPoolList: func() []*armcontainerservice.AgentPool {
-				return []*armcontainerservice.AgentPool{}
+			mockAgentPoolList: func() []*armhybridcontainerservice.AgentPool {
+				return []*armhybridcontainerservice.AgentPool{}
 			},
-			mockAgentPoolResp: func(apList []*armcontainerservice.AgentPool) *runtime.Pager[armcontainerservice.AgentPoolsClientListResponse] {
-				return runtime.NewPager(runtime.PagingHandler[armcontainerservice.AgentPoolsClientListResponse]{
-					More: func(page armcontainerservice.AgentPoolsClientListResponse) bool {
+			mockAgentPoolResp: func(apList []*armhybridcontainerservice.AgentPool) *runtime.Pager[armhybridcontainerservice.AgentPoolsClientListResponse] {
+				return runtime.NewPager(runtime.PagingHandler[armhybridcontainerservice.AgentPoolsClientListResponse]{
+					More: func(page armhybridcontainerservice.AgentPoolsClientListResponse) bool {
 						return false
 					},
-					Fetcher: func(ctx context.Context, page *armcontainerservice.AgentPoolsClientListResponse) (armcontainerservice.AgentPoolsClientListResponse, error) {
-						return armcontainerservice.AgentPoolsClientListResponse{}, errors.New("Failed to fetch page")
+					Fetcher: func(ctx context.Context, page *armhybridcontainerservice.AgentPoolsClientListResponse) (armhybridcontainerservice.AgentPoolsClientListResponse, error) {
+						return armhybridcontainerservice.AgentPoolsClientListResponse{}, errors.New("Failed to fetch page")
 					},
 				})
 			},
@@ -449,13 +449,13 @@ func TestFromAPListToInstanceFailure(t *testing.T) {
 	testCases := []struct {
 		name              string
 		id                string
-		mockAgentPoolList func(id string) []*armcontainerservice.AgentPool
+		mockAgentPoolList func(id string) []*armhybridcontainerservice.AgentPool
 		expectedError     func(err string) error
 	}{
 		{
 			name: "Fail to get instance from agent pool list because no agentpools are found",
-			mockAgentPoolList: func(id string) []*armcontainerservice.AgentPool {
-				return []*armcontainerservice.AgentPool{}
+			mockAgentPoolList: func(id string) []*armhybridcontainerservice.AgentPool {
+				return []*armhybridcontainerservice.AgentPool{}
 			},
 			expectedError: func(err string) error {
 				return errors.New("nodeclaim not found, agentpools not found")
@@ -485,7 +485,7 @@ func TestCreateSuccess(t *testing.T) {
 	testCases := []struct {
 		name              string
 		nodeClaim         *karpenterv1.NodeClaim
-		mockAgentPoolResp func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error)
+		mockAgentPoolResp func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error)
 		callK8sMocks      func(c *fake.MockClient)
 	}{
 		{
@@ -501,10 +501,10 @@ func TestCreateSuccess(t *testing.T) {
 						Values:   []string{"Standard_NC6s_v3"},
 					},
 				}),
-			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error) {
+			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error) {
 				ap := GetAgentPoolObjWithName(nodeClaim.Name, "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/nodeRG/providers/Microsoft.Compute/virtualMachineScaleSets/aks-agentpool0-20562481-vmss", nodeClaim.Spec.Requirements[0].Values[0])
 
-				createResp := armcontainerservice.AgentPoolsClientCreateOrUpdateResponse{
+				createResp := armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse{
 					AgentPool: ap,
 				}
 				resp := http.Response{StatusCode: http.StatusAccepted, Body: http.NoBody}
@@ -512,7 +512,7 @@ func TestCreateSuccess(t *testing.T) {
 				mockHandler.EXPECT().Done().Return(true).Times(3)
 				mockHandler.EXPECT().Result(gomock.Any(), gomock.Any()).Return(nil)
 
-				pollingOptions := &runtime.NewPollerOptions[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]{
+				pollingOptions := &runtime.NewPollerOptions[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse]{
 					Handler:  mockHandler,
 					Response: &createResp,
 				}
@@ -547,10 +547,10 @@ func TestCreateSuccess(t *testing.T) {
 						Values:   []string{"Standard_NC6s_v3"},
 					},
 				}),
-			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error) {
+			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error) {
 				ap := GetAgentPoolObjWithName(nodeClaim.Name, "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/nodeRG/providers/Microsoft.Compute/virtualMachineScaleSets/aks-agentpool0-20562481-vmss", nodeClaim.Spec.Requirements[0].Values[0])
 
-				createResp := armcontainerservice.AgentPoolsClientCreateOrUpdateResponse{
+				createResp := armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse{
 					AgentPool: ap,
 				}
 				resp := http.Response{StatusCode: http.StatusAccepted, Body: http.NoBody}
@@ -558,7 +558,7 @@ func TestCreateSuccess(t *testing.T) {
 				mockHandler.EXPECT().Done().Return(true).Times(3)
 				mockHandler.EXPECT().Result(gomock.Any(), gomock.Any()).Return(nil)
 
-				pollingOptions := &runtime.NewPollerOptions[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]{
+				pollingOptions := &runtime.NewPollerOptions[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse]{
 					Handler:  mockHandler,
 					Response: &createResp,
 				}
@@ -591,7 +591,7 @@ func TestCreateSuccess(t *testing.T) {
 
 			agentPoolMocks := fake.NewMockAgentPoolsAPI(mockCtrl)
 			if tc.mockAgentPoolResp != nil {
-				mockHandler := fake.NewMockPollingHandler[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse](mockCtrl)
+				mockHandler := fake.NewMockPollingHandler[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse](mockCtrl)
 
 				p, err := tc.mockAgentPoolResp(tc.nodeClaim, mockHandler)
 				agentPoolMocks.EXPECT().BeginCreateOrUpdate(gomock.Any(), gomock.Any(), gomock.Any(), tc.nodeClaim.Name, gomock.Any(), gomock.Any()).Return(p, err)
@@ -618,7 +618,7 @@ func TestCreateFailure(t *testing.T) {
 	testCases := []struct {
 		name              string
 		nodeClaim         *karpenterv1.NodeClaim
-		mockAgentPoolResp func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error)
+		mockAgentPoolResp func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error)
 		callK8sMocks      func(c *fake.MockClient)
 		expectedError     error
 	}{
@@ -635,10 +635,10 @@ func TestCreateFailure(t *testing.T) {
 						Values:   []string{"Standard_NC6s_v3"},
 					},
 				}),
-			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error) {
+			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error) {
 				ap := GetAgentPoolObjWithName(nodeClaim.Name, "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/nodeRG/providers/Microsoft.Compute/virtualMachineScaleSets/aks-agentpool0-20562481-vmss", nodeClaim.Spec.Requirements[0].Values[0])
 
-				createResp := armcontainerservice.AgentPoolsClientCreateOrUpdateResponse{
+				createResp := armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse{
 					AgentPool: ap,
 				}
 				resp := http.Response{StatusCode: http.StatusAccepted, Body: http.NoBody}
@@ -646,7 +646,7 @@ func TestCreateFailure(t *testing.T) {
 				mockHandler.EXPECT().Done().Return(true).Times(3)
 				mockHandler.EXPECT().Result(gomock.Any(), gomock.Any()).Return(nil)
 
-				pollingOptions := &runtime.NewPollerOptions[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]{
+				pollingOptions := &runtime.NewPollerOptions[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse]{
 					Handler:  mockHandler,
 					Response: &createResp,
 				}
@@ -674,10 +674,10 @@ func TestCreateFailure(t *testing.T) {
 						Values:   []string{"Standard_NC6s_v3"},
 					},
 				}),
-			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error) {
+			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error) {
 				ap := GetAgentPoolObjWithName(nodeClaim.Name, "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/nodeRG/providers/Microsoft.Compute/virtualMachineScaleSets/aks-agentpool0-20562481-vmss", nodeClaim.Spec.Requirements[0].Values[0])
 
-				createResp := armcontainerservice.AgentPoolsClientCreateOrUpdateResponse{
+				createResp := armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse{
 					AgentPool: ap,
 				}
 				resp := http.Response{StatusCode: http.StatusAccepted, Body: http.NoBody}
@@ -685,7 +685,7 @@ func TestCreateFailure(t *testing.T) {
 				mockHandler.EXPECT().Done().Return(true).Times(3)
 				mockHandler.EXPECT().Result(gomock.Any(), gomock.Any()).Return(nil)
 
-				pollingOptions := &runtime.NewPollerOptions[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]{
+				pollingOptions := &runtime.NewPollerOptions[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse]{
 					Handler:  mockHandler,
 					Response: &createResp,
 				}
@@ -711,16 +711,16 @@ func TestCreateFailure(t *testing.T) {
 						Values:   []string{"Standard_NC6s_v3"},
 					},
 				}),
-			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error) {
-				createResp := armcontainerservice.AgentPoolsClientCreateOrUpdateResponse{
-					AgentPool: armcontainerservice.AgentPool{},
+			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error) {
+				createResp := armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse{
+					AgentPool: armhybridcontainerservice.AgentPool{},
 				}
 				resp := http.Response{StatusCode: http.StatusBadRequest, Body: http.NoBody}
 
 				mockHandler.EXPECT().Done().Return(false)
 				mockHandler.EXPECT().Poll(gomock.Any()).Return(&resp, errors.New("Failed to fetch latest status of operation"))
 
-				pollingOptions := &runtime.NewPollerOptions[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]{
+				pollingOptions := &runtime.NewPollerOptions[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse]{
 					Handler:  mockHandler,
 					Response: &createResp,
 				}
@@ -743,7 +743,7 @@ func TestCreateFailure(t *testing.T) {
 						Values:   []string{"Standard_D4s_v4"},
 					},
 				}),
-			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error) {
+			mockAgentPoolResp: func(nodeClaim *karpenterv1.NodeClaim, mockHandler *fake.MockPollingHandler[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse]) (*runtime.Poller[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error) {
 				return nil, errors.New("Failed to create agent pool")
 			},
 			expectedError: errors.New("Failed to create agent pool"),
@@ -786,7 +786,7 @@ func TestCreateFailure(t *testing.T) {
 
 			agentPoolMocks := fake.NewMockAgentPoolsAPI(mockCtrl)
 			if tc.mockAgentPoolResp != nil {
-				mockHandler := fake.NewMockPollingHandler[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse](mockCtrl)
+				mockHandler := fake.NewMockPollingHandler[armhybridcontainerservice.AgentPoolsClientCreateOrUpdateResponse](mockCtrl)
 
 				p, err := tc.mockAgentPoolResp(tc.nodeClaim, mockHandler)
 				agentPoolMocks.EXPECT().BeginCreateOrUpdate(gomock.Any(), gomock.Any(), gomock.Any(), tc.nodeClaim.Name, gomock.Any(), gomock.Any()).Return(p, err)
@@ -812,15 +812,15 @@ func createTestProvider(agentPoolsAPIMocks *fake.MockAgentPoolsAPI, mockK8sClien
 	return NewProvider(mockAzClient, mockK8sClient, "testRG", "testCluster")
 }
 
-func GetAgentPoolObj(apType armcontainerservice.AgentPoolType, capacityType armcontainerservice.ScaleSetPriority,
-	labels map[string]*string, taints []*string, diskSizeGB int32, vmSize string) armcontainerservice.AgentPool {
-	return armcontainerservice.AgentPool{
-		Properties: &armcontainerservice.ManagedClusterAgentPoolProfileProperties{
+func GetAgentPoolObj(apType armhybridcontainerservice.AgentPoolType, capacityType armhybridcontainerservice.ScaleSetPriority,
+	labels map[string]*string, taints []*string, diskSizeGB int32, vmSize string) armhybridcontainerservice.AgentPool {
+	return armhybridcontainerservice.AgentPool{
+		Properties: &armhybridcontainerservice.ManagedClusterAgentPoolProfileProperties{
 			NodeLabels:       labels,
 			NodeTaints:       taints,
 			Type:             to.Ptr(apType),
 			VMSize:           to.Ptr(vmSize),
-			OSType:           to.Ptr(armcontainerservice.OSTypeLinux),
+			OSType:           to.Ptr(armhybridcontainerservice.OSTypeLinux),
 			Count:            to.Ptr(int32(1)),
 			ScaleSetPriority: to.Ptr(capacityType),
 			OSDiskSizeGB:     to.Ptr(diskSizeGB),
@@ -828,11 +828,11 @@ func GetAgentPoolObj(apType armcontainerservice.AgentPoolType, capacityType armc
 	}
 }
 
-func GetAgentPoolObjWithName(apName string, apId string, vmSize string) armcontainerservice.AgentPool {
-	return armcontainerservice.AgentPool{
+func GetAgentPoolObjWithName(apName string, apId string, vmSize string) armhybridcontainerservice.AgentPool {
+	return armhybridcontainerservice.AgentPool{
 		Name: &apName,
 		ID:   &apId,
-		Properties: &armcontainerservice.ManagedClusterAgentPoolProfileProperties{
+		Properties: &armhybridcontainerservice.ManagedClusterAgentPoolProfileProperties{
 			VMSize: &vmSize,
 			NodeLabels: map[string]*string{
 				"test":                       to.Ptr("test"),

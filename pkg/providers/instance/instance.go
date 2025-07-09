@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/hybridcontainerservice/armhybridcontainerservice"
 	"github.com/azure/gpu-provisioner/pkg/utils"
 	"github.com/samber/lo"
 	v1 "k8s.io/api/core/v1"
@@ -51,15 +51,27 @@ var (
 )
 
 type Provider struct {
-	azClient      *AZClient
-	kubeClient    client.Client
-	resourceGroup string
-	clusterName   string
+	azClient       *AZClient
+	kubeClient     client.Client
+	subscriptionID string // Subscription ID is not directly available in the hybrid container service API, but we can get it from the auth config
+	resourceGroup  string
+	clusterName    string
+}
+
+// getConnectedClusterResourceURI constructs the resource URI for the connected cluster
+func (p *Provider) getConnectedClusterResourceURI() string {
+	// For Azure Hybrid Container Service, we need to construct the connected cluster resource URI
+	// Format: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Kubernetes/connectedClusters/{clusterName}
+	// However, since we don't have the subscription ID directly available here,
+	// we'll need to get it from the AZ client configuration. For now, let's construct it based on resourceGroup and clusterName
+	return fmt.Sprintf("/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Kubernetes/connectedClusters/%s",
+		p.subscriptionID, p.resourceGroup, p.clusterName)
 }
 
 func NewProvider(
 	azClient *AZClient,
 	kubeClient client.Client,
+	subscriptionID string,
 	resourceGroup string,
 	clusterName string,
 ) *Provider {
@@ -83,7 +95,7 @@ func (p *Provider) Create(ctx context.Context, nodeClaim *karpenterv1.NodeClaim)
 		return nil, fmt.Errorf("agentpool name(%s) is invalid, must match regex pattern: ^[a-z][a-z0-9]{0,11}$", apName)
 	}
 
-	var ap *armcontainerservice.AgentPool
+	var ap *armhybridcontainerservice.AgentPool
 	err := retry.OnError(retry.DefaultBackoff, func(err error) bool {
 		return false
 	}, func() error {
@@ -100,7 +112,7 @@ func (p *Provider) Create(ctx context.Context, nodeClaim *karpenterv1.NodeClaim)
 
 		logging.FromContext(ctx).Debugf("creating Agent pool %s (%s)", apName, vmSize)
 		var err error
-		ap, err = createAgentPool(ctx, p.azClient.agentPoolsClient, p.resourceGroup, apName, p.clusterName, apObj)
+		ap, err = createAgentPool(ctx, p.azClient.agentPoolsClient, p.getConnectedClusterResourceURI(), apName, apObj)
 		if err != nil {
 			switch {
 			case strings.Contains(err.Error(), "Operation is not allowed because there's an in progress create node pool operation"):
@@ -155,7 +167,7 @@ func (p *Provider) Get(ctx context.Context, id string) (*Instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("getting agentpool name, %w", err)
 	}
-	apObj, err := getAgentPool(ctx, p.azClient.agentPoolsClient, p.resourceGroup, p.clusterName, apName)
+	apObj, err := getAgentPool(ctx, p.azClient.agentPoolsClient, p.getConnectedClusterResourceURI(), apName)
 	if err != nil {
 		if strings.Contains(err.Error(), "Agent Pool not found") {
 			return nil, cloudprovider.NewNodeClaimNotFoundError(err)
@@ -168,7 +180,7 @@ func (p *Provider) Get(ctx context.Context, id string) (*Instance, error) {
 }
 
 func (p *Provider) List(ctx context.Context) ([]*Instance, error) {
-	apList, err := listAgentPools(ctx, p.azClient.agentPoolsClient, p.resourceGroup, p.clusterName)
+	apList, err := listAgentPools(ctx, p.azClient.agentPoolsClient, p.getConnectedClusterResourceURI())
 	if err != nil {
 		logging.FromContext(ctx).Errorf("Listing agentpools failed: %v", err)
 		return nil, fmt.Errorf("agentPool.NewListPager failed: %w", err)
@@ -181,7 +193,7 @@ func (p *Provider) List(ctx context.Context) ([]*Instance, error) {
 func (p *Provider) Delete(ctx context.Context, apName string) error {
 	klog.InfoS("Instance.Delete", "agentpool name", apName)
 
-	err := deleteAgentPool(ctx, p.azClient.agentPoolsClient, p.resourceGroup, p.clusterName, apName)
+	err := deleteAgentPool(ctx, p.azClient.agentPoolsClient, p.getConnectedClusterResourceURI(), apName)
 	if err != nil {
 		logging.FromContext(ctx).Errorf("Deleting agentpool %q failed: %v", apName, err)
 		return fmt.Errorf("agentPool.Delete for %q failed: %w", apName, err)
@@ -189,7 +201,7 @@ func (p *Provider) Delete(ctx context.Context, apName string) error {
 	return nil
 }
 
-func (p *Provider) convertAgentPoolToInstance(ctx context.Context, apObj *armcontainerservice.AgentPool, id string) (*Instance, error) {
+func (p *Provider) convertAgentPoolToInstance(ctx context.Context, apObj *armhybridcontainerservice.AgentPool, id string) (*Instance, error) {
 	if apObj == nil || len(id) == 0 {
 		return nil, fmt.Errorf("agent pool or provider id is nil")
 	}
@@ -202,15 +214,15 @@ func (p *Provider) convertAgentPoolToInstance(ctx context.Context, apObj *armcon
 		Name:     apObj.Name,
 		ID:       to.Ptr(id),
 		Type:     apObj.Properties.VMSize,
-		SubnetID: apObj.Properties.VnetSubnetID,
-		Tags:     apObj.Properties.Tags,
-		State:    apObj.Properties.ProvisioningState,
+		SubnetID: nil,                                           // VnetSubnetID not available in hybrid container service
+		Tags:     apObj.Tags,                                    // Tags moved to top level
+		State:    (*string)(apObj.Properties.ProvisioningState), // Convert ResourceProvisioningState to string
 		Labels:   instanceLabels,
-		ImageID:  apObj.Properties.NodeImageVersion,
+		ImageID:  nil, // NodeImageVersion not available in hybrid container service
 	}, nil
 }
 
-func (p *Provider) fromRegisteredAgentPoolToInstance(ctx context.Context, apObj *armcontainerservice.AgentPool) (*Instance, error) {
+func (p *Provider) fromRegisteredAgentPoolToInstance(ctx context.Context, apObj *armhybridcontainerservice.AgentPool) (*Instance, error) {
 	if apObj == nil {
 		return nil, fmt.Errorf("agent pool is nil")
 	}
@@ -251,16 +263,16 @@ func (p *Provider) fromRegisteredAgentPoolToInstance(ctx context.Context, apObj 
 		// ID:       to.Ptr(fmt.Sprint("azure://", p.getVMSSNodeProviderID(lo.FromPtr(subID), tokens[0]))),
 		ID:       to.Ptr(nodes[0].Spec.ProviderID),
 		Type:     apObj.Properties.VMSize,
-		SubnetID: apObj.Properties.VnetSubnetID,
-		Tags:     apObj.Properties.Tags,
-		State:    apObj.Properties.ProvisioningState,
+		SubnetID: nil,                                           // VnetSubnetID not available in hybrid container service
+		Tags:     apObj.Tags,                                    // Tags moved to top level
+		State:    (*string)(apObj.Properties.ProvisioningState), // Convert ResourceProvisioningState to string
 		Labels:   instanceLabels,
 	}, nil
 }
 
 // fromKaitoAgentPoolToInstance is used to convert agentpool that owned by kaito to Instance, and agentPools that have no
 // associated node are also included in order to garbage leaked agentPools.
-func (p *Provider) fromKaitoAgentPoolToInstance(ctx context.Context, apObj *armcontainerservice.AgentPool) (*Instance, error) {
+func (p *Provider) fromKaitoAgentPoolToInstance(ctx context.Context, apObj *armhybridcontainerservice.AgentPool) (*Instance, error) {
 	if apObj == nil {
 		return nil, fmt.Errorf("agent pool is nil")
 	}
@@ -271,9 +283,9 @@ func (p *Provider) fromKaitoAgentPoolToInstance(ctx context.Context, apObj *armc
 	ins := &Instance{
 		Name:     apObj.Name,
 		Type:     apObj.Properties.VMSize,
-		SubnetID: apObj.Properties.VnetSubnetID,
-		Tags:     apObj.Properties.Tags,
-		State:    apObj.Properties.ProvisioningState,
+		SubnetID: nil,                                           // VnetSubnetID not available in hybrid container service
+		Tags:     apObj.Tags,                                    // Tags moved to top level
+		State:    (*string)(apObj.Properties.ProvisioningState), // Convert ResourceProvisioningState to string
 		Labels:   instanceLabels,
 	}
 
@@ -289,7 +301,7 @@ func (p *Provider) fromKaitoAgentPoolToInstance(ctx context.Context, apObj *armc
 	return ins, nil
 }
 
-func (p *Provider) fromAPListToInstances(ctx context.Context, apList []*armcontainerservice.AgentPool) ([]*Instance, error) {
+func (p *Provider) fromAPListToInstances(ctx context.Context, apList []*armhybridcontainerservice.AgentPool) ([]*Instance, error) {
 	instances := []*Instance{}
 	if len(apList) == 0 {
 		return instances, cloudprovider.NewNodeClaimNotFoundError(fmt.Errorf("agentpools not found"))
@@ -321,14 +333,15 @@ func (p *Provider) fromAPListToInstances(ctx context.Context, apList []*armconta
 	return instances, nil
 }
 
-func newAgentPoolObject(vmSize string, nodeClaim *karpenterv1.NodeClaim) (armcontainerservice.AgentPool, error) {
+func newAgentPoolObject(vmSize string, nodeClaim *karpenterv1.NodeClaim) (armhybridcontainerservice.AgentPool, error) {
 	taints := nodeClaim.Spec.Taints
 	taintsStr := []*string{}
 	for _, t := range taints {
 		taintsStr = append(taintsStr, to.Ptr(fmt.Sprintf("%s=%s:%s", t.Key, t.Value, t.Effect)))
 	}
 
-	scaleSetsType := armcontainerservice.AgentPoolTypeVirtualMachineScaleSets
+	// Note: AgentPoolType enum not available in hybrid container service API
+	// The hybrid service likely manages the agent pool type automatically
 	// todo: why nodepool label is used here
 	labels := map[string]*string{karpenterv1.NodePoolLabelKey: to.Ptr("kaito")}
 	for k, v := range nodeClaim.Labels {
@@ -348,22 +361,19 @@ func newAgentPoolObject(vmSize string, nodeClaim *karpenterv1.NodeClaim) (armcon
 	if nodeClaim.Spec.Resources.Requests != nil {
 		storage = nodeClaim.Spec.Resources.Requests.Storage()
 	}
-	var diskSizeGB int32
 	if storage.Value() <= 0 {
-		return armcontainerservice.AgentPool{}, fmt.Errorf("storage request of nodeclaim(%s) should be more than 0", nodeClaim.Name)
-	} else {
-		diskSizeGB = int32(storage.Value() >> 30)
+		return armhybridcontainerservice.AgentPool{}, fmt.Errorf("storage request of nodeclaim(%s) should be more than 0", nodeClaim.Name)
 	}
+	// Note: OSDiskSizeGB not supported in hybrid container service API, so we don't use diskSizeGB
 
-	return armcontainerservice.AgentPool{
-		Properties: &armcontainerservice.ManagedClusterAgentPoolProfileProperties{
-			NodeLabels:   labels,
-			NodeTaints:   taintsStr, //[]*string{to.Ptr("sku=gpu:NoSchedule")},
-			Type:         to.Ptr(scaleSetsType),
-			VMSize:       to.Ptr(vmSize),
-			OSType:       to.Ptr(armcontainerservice.OSTypeLinux),
-			Count:        to.Ptr(int32(1)),
-			OSDiskSizeGB: to.Ptr(diskSizeGB),
+	return armhybridcontainerservice.AgentPool{
+		Properties: &armhybridcontainerservice.AgentPoolProperties{
+			NodeLabels: labels,
+			NodeTaints: taintsStr, //[]*string{to.Ptr("sku=gpu:NoSchedule")},
+			VMSize:     to.Ptr(vmSize),
+			OSType:     to.Ptr(armhybridcontainerservice.OsTypeLinux),
+			Count:      to.Ptr(int32(1)),
+			// Note: OSDiskSizeGB not available in hybrid container service API
 		},
 	}, nil
 }
@@ -384,7 +394,7 @@ func (p *Provider) getNodesByName(ctx context.Context, apName string) ([]*v1.Nod
 	return lo.ToSlicePtr(nodeList.Items), nil
 }
 
-func agentPoolIsOwnedByKaito(ap *armcontainerservice.AgentPool) bool {
+func agentPoolIsOwnedByKaito(ap *armhybridcontainerservice.AgentPool) bool {
 	if ap == nil || ap.Properties == nil {
 		return false
 	}
@@ -399,7 +409,7 @@ func agentPoolIsOwnedByKaito(ap *armcontainerservice.AgentPool) bool {
 	return false
 }
 
-func agentPoolIsCreatedFromNodeClaim(ap *armcontainerservice.AgentPool) bool {
+func agentPoolIsCreatedFromNodeClaim(ap *armhybridcontainerservice.AgentPool) bool {
 	if ap == nil || ap.Properties == nil {
 		return false
 	}

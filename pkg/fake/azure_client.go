@@ -27,7 +27,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/hybridcontainerservice/armhybridcontainerservice"
 	"go.uber.org/mock/gomock"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	karpenterv1 "sigs.k8s.io/karpenter/pkg/apis/v1"
@@ -57,69 +57,69 @@ func (m *MockAgentPoolsAPI) EXPECT() *MockAgentPoolsAPIMockRecorder {
 }
 
 // BeginCreateOrUpdate mocks base method.
-func (m *MockAgentPoolsAPI) BeginCreateOrUpdate(ctx context.Context, resourceGroupName, resourceName, agentPoolName string, parameters armcontainerservice.AgentPool, options *armcontainerservice.AgentPoolsClientBeginCreateOrUpdateOptions) (*runtime.Poller[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error) {
+func (m *MockAgentPoolsAPI) BeginCreateOrUpdate(ctx context.Context, connectedClusterResourceURI string, agentPoolName string, agentPool armhybridcontainerservice.AgentPool, options *armhybridcontainerservice.AgentPoolClientBeginCreateOrUpdateOptions) (*runtime.Poller[armhybridcontainerservice.AgentPoolClientCreateOrUpdateResponse], error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BeginCreateOrUpdate", ctx, resourceGroupName, resourceName, agentPoolName, parameters, options)
-	ret0, _ := ret[0].(*runtime.Poller[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse])
+	ret := m.ctrl.Call(m, "BeginCreateOrUpdate", ctx, connectedClusterResourceURI, agentPoolName, agentPool, options)
+	ret0, _ := ret[0].(*runtime.Poller[armhybridcontainerservice.AgentPoolClientCreateOrUpdateResponse])
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // BeginCreateOrUpdate indicates an expected call of BeginCreateOrUpdate.
-func (mr *MockAgentPoolsAPIMockRecorder) BeginCreateOrUpdate(ctx, resourceGroupName, resourceName, agentPoolName, parameters, options any) *gomock.Call {
+func (mr *MockAgentPoolsAPIMockRecorder) BeginCreateOrUpdate(ctx, connectedClusterResourceURI, agentPoolName, agentPool, options any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeginCreateOrUpdate", reflect.TypeOf((*MockAgentPoolsAPI)(nil).BeginCreateOrUpdate), ctx, resourceGroupName, resourceName, agentPoolName, parameters, options)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeginCreateOrUpdate", reflect.TypeOf((*MockAgentPoolsAPI)(nil).BeginCreateOrUpdate), ctx, connectedClusterResourceURI, agentPoolName, agentPool, options)
 }
 
 // BeginDelete mocks base method.
-func (m *MockAgentPoolsAPI) BeginDelete(ctx context.Context, resourceGroupName, resourceName, agentPoolName string, options *armcontainerservice.AgentPoolsClientBeginDeleteOptions) (*runtime.Poller[armcontainerservice.AgentPoolsClientDeleteResponse], error) {
+func (m *MockAgentPoolsAPI) BeginDelete(ctx context.Context, connectedClusterResourceURI string, agentPoolName string, options *armhybridcontainerservice.AgentPoolClientBeginDeleteOptions) (*runtime.Poller[armhybridcontainerservice.AgentPoolClientDeleteResponse], error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BeginDelete", ctx, resourceGroupName, resourceName, agentPoolName, options)
-	ret0, _ := ret[0].(*runtime.Poller[armcontainerservice.AgentPoolsClientDeleteResponse])
+	ret := m.ctrl.Call(m, "BeginDelete", ctx, connectedClusterResourceURI, agentPoolName, options)
+	ret0, _ := ret[0].(*runtime.Poller[armhybridcontainerservice.AgentPoolClientDeleteResponse])
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // BeginDelete indicates an expected call of BeginDelete.
-func (mr *MockAgentPoolsAPIMockRecorder) BeginDelete(ctx, resourceGroupName, resourceName, agentPoolName, options any) *gomock.Call {
+func (mr *MockAgentPoolsAPIMockRecorder) BeginDelete(ctx, connectedClusterResourceURI, agentPoolName, options any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeginDelete", reflect.TypeOf((*MockAgentPoolsAPI)(nil).BeginDelete), ctx, resourceGroupName, resourceName, agentPoolName, options)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeginDelete", reflect.TypeOf((*MockAgentPoolsAPI)(nil).BeginDelete), ctx, connectedClusterResourceURI, agentPoolName, options)
 }
 
 // Get mocks base method.
-func (m *MockAgentPoolsAPI) Get(ctx context.Context, resourceGroupName, resourceName, agentPoolName string, options *armcontainerservice.AgentPoolsClientGetOptions) (armcontainerservice.AgentPoolsClientGetResponse, error) {
+func (m *MockAgentPoolsAPI) Get(ctx context.Context, connectedClusterResourceURI string, agentPoolName string, options *armhybridcontainerservice.AgentPoolClientGetOptions) (armhybridcontainerservice.AgentPoolClientGetResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", ctx, resourceGroupName, resourceName, agentPoolName, options)
-	ret0, _ := ret[0].(armcontainerservice.AgentPoolsClientGetResponse)
+	ret := m.ctrl.Call(m, "Get", ctx, connectedClusterResourceURI, agentPoolName, options)
+	ret0, _ := ret[0].(armhybridcontainerservice.AgentPoolClientGetResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockAgentPoolsAPIMockRecorder) Get(ctx, resourceGroupName, resourceName, agentPoolName, options any) *gomock.Call {
+func (mr *MockAgentPoolsAPIMockRecorder) Get(ctx, connectedClusterResourceURI, agentPoolName, options any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockAgentPoolsAPI)(nil).Get), ctx, resourceGroupName, resourceName, agentPoolName, options)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockAgentPoolsAPI)(nil).Get), ctx, connectedClusterResourceURI, agentPoolName, options)
 }
 
 // NewListPager mocks base method.
-func (m *MockAgentPoolsAPI) NewListPager(resourceGroupName, resourceName string, options *armcontainerservice.AgentPoolsClientListOptions) *runtime.Pager[armcontainerservice.AgentPoolsClientListResponse] {
+func (m *MockAgentPoolsAPI) NewListByProvisionedClusterPager(connectedClusterResourceURI string, options *armhybridcontainerservice.AgentPoolClientListByProvisionedClusterOptions) *runtime.Pager[armhybridcontainerservice.AgentPoolClientListByProvisionedClusterResponse] {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NewListPager", resourceGroupName, resourceName, options)
-	ret0, _ := ret[0].(*runtime.Pager[armcontainerservice.AgentPoolsClientListResponse])
+	ret := m.ctrl.Call(m, "NewListByProvisionedClusterPager", connectedClusterResourceURI, options)
+	ret0, _ := ret[0].(*runtime.Pager[armhybridcontainerservice.AgentPoolClientListByProvisionedClusterResponse])
 	return ret0
 }
 
-// NewListPager indicates an expected call of NewListPager.
-func (mr *MockAgentPoolsAPIMockRecorder) NewListPager(resourceGroupName, resourceName, options any) *gomock.Call {
+// NewListByProvisionedClusterPager indicates an expected call of NewListByProvisionedClusterPager.
+func (mr *MockAgentPoolsAPIMockRecorder) NewListByProvisionedClusterPager(connectedClusterResourceURI, options any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewListPager", reflect.TypeOf((*MockAgentPoolsAPI)(nil).NewListPager), resourceGroupName, resourceName, options)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewListByProvisionedClusterPager", reflect.TypeOf((*MockAgentPoolsAPI)(nil).NewListByProvisionedClusterPager), connectedClusterResourceURI, options)
 }
 
-func CreateAgentPoolObjWithNodeClaim(nc *karpenterv1.NodeClaim) armcontainerservice.AgentPool {
-	return armcontainerservice.AgentPool{
+func CreateAgentPoolObjWithNodeClaim(nc *karpenterv1.NodeClaim) armhybridcontainerservice.AgentPool {
+	return armhybridcontainerservice.AgentPool{
 		Name: &nc.Name,
 		ID:   to.Ptr(fmt.Sprintf("azure:///subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/nodeRG/providers/Microsoft.Compute/virtualMachineScaleSets/aks-%s-20562481-vmss/virtualMachines/0", nc.Name)),
-		Properties: &armcontainerservice.ManagedClusterAgentPoolProfileProperties{
+		Properties: &armhybridcontainerservice.AgentPoolProperties{
 			VMSize: to.Ptr(nc.Spec.Requirements[0].Values[0]),
 			NodeLabels: map[string]*string{
 				"test":               to.Ptr("test"),

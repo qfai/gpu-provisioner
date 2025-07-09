@@ -26,7 +26,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/hybridcontainerservice/armhybridcontainerservice"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/azure/gpu-provisioner/pkg/auth"
 	"github.com/azure/gpu-provisioner/pkg/utils"
@@ -40,10 +40,10 @@ const (
 )
 
 type AgentPoolsAPI interface {
-	BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, resourceName string, agentPoolName string, parameters armcontainerservice.AgentPool, options *armcontainerservice.AgentPoolsClientBeginCreateOrUpdateOptions) (*runtime.Poller[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error)
-	Get(ctx context.Context, resourceGroupName string, resourceName string, agentPoolName string, options *armcontainerservice.AgentPoolsClientGetOptions) (armcontainerservice.AgentPoolsClientGetResponse, error)
-	BeginDelete(ctx context.Context, resourceGroupName string, resourceName string, agentPoolName string, options *armcontainerservice.AgentPoolsClientBeginDeleteOptions) (*runtime.Poller[armcontainerservice.AgentPoolsClientDeleteResponse], error)
-	NewListPager(resourceGroupName string, resourceName string, options *armcontainerservice.AgentPoolsClientListOptions) *runtime.Pager[armcontainerservice.AgentPoolsClientListResponse]
+	BeginCreateOrUpdate(ctx context.Context, connectedClusterResourceURI string, agentPoolName string, agentPool armhybridcontainerservice.AgentPool, options *armhybridcontainerservice.AgentPoolClientBeginCreateOrUpdateOptions) (*runtime.Poller[armhybridcontainerservice.AgentPoolClientCreateOrUpdateResponse], error)
+	Get(ctx context.Context, connectedClusterResourceURI string, agentPoolName string, options *armhybridcontainerservice.AgentPoolClientGetOptions) (armhybridcontainerservice.AgentPoolClientGetResponse, error)
+	BeginDelete(ctx context.Context, connectedClusterResourceURI string, agentPoolName string, options *armhybridcontainerservice.AgentPoolClientBeginDeleteOptions) (*runtime.Poller[armhybridcontainerservice.AgentPoolClientDeleteResponse], error)
+	NewListByProvisionedClusterPager(connectedClusterResourceURI string, options *armhybridcontainerservice.AgentPoolClientListByProvisionedClusterOptions) *runtime.Pager[armhybridcontainerservice.AgentPoolClientListByProvisionedClusterResponse]
 }
 
 type AZClient struct {
@@ -99,7 +99,7 @@ func NewAZClient(cfg *auth.Config, env *azure.Environment) (*AZClient, error) {
 		opts = setArmClientOptions()
 	}
 
-	agentPoolClient, err := armcontainerservice.NewAgentPoolsClient(cfg.SubscriptionID, cred, opts)
+	agentPoolClient, err := armhybridcontainerservice.NewAgentPoolClient(cred, opts)
 	if err != nil {
 		return nil, err
 	}
