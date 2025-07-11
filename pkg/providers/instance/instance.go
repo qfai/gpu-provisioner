@@ -380,18 +380,36 @@ func newAgentPoolObject(vmSize string, nodeClaim *karpenterv1.NodeClaim) (armhyb
 
 func (p *Provider) getNodesByName(ctx context.Context, apName string) ([]*v1.Node, error) {
 	nodeList := &v1.NodeList{}
-	labelSelector := client.MatchingLabels{"agentpool": apName, "kubernetes.azure.com/agentpool": apName}
 
+	// Get all nodes first
 	err := retry.OnError(retry.DefaultRetry, func(err error) bool {
 		return true
 	}, func() error {
-		return p.kubeClient.List(ctx, nodeList, labelSelector)
+		return p.kubeClient.List(ctx, nodeList)
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return lo.ToSlicePtr(nodeList.Items), nil
+	// Filter nodes by matching the custom label format or standard labels
+	var matchingNodes []*v1.Node
+	for i := range nodeList.Items {
+		node := &nodeList.Items[i]
+
+		// Primary: Check the custom Microsoft nodepool label format: msft.microsoft/nodepool-name
+		// The value format is: clusterName-randomChars-agentPoolName
+		if nodepoolName, exists := node.Labels["msft.microsoft/nodepool-name"]; exists {
+			// Check if the nodepool name ends with the agent pool name
+			if strings.HasSuffix(nodepoolName, "-"+apName) {
+				// Additional validation: check if it starts with cluster name (if available)
+				if strings.HasPrefix(nodepoolName, p.clusterName+"-") {
+					matchingNodes = append(matchingNodes, node)
+				}
+			}
+		}
+	}
+
+	return matchingNodes, nil
 }
 
 func agentPoolIsOwnedByKaito(ap *armhybridcontainerservice.AgentPool) bool {

@@ -855,6 +855,7 @@ var (
 			Labels: map[string]string{
 				"agentpool":                      "agentpool0",
 				"kubernetes.azure.com/agentpool": "agentpool0",
+				"msft.microsoft/nodepool-name":   "testcluster-abc12-agentpool0", // Custom label format
 			},
 		},
 		Spec: v1.NodeSpec{

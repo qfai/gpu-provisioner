@@ -209,12 +209,17 @@ func CreateNodeListWithNodeClaim(nodeClaims []*karpenterv1.NodeClaim) *corev1.No
 		if len(nodeClaims[i].Status.ProviderID) == 0 {
 			continue
 		}
+		
+		// Generate a realistic nodepool name with cluster-randomChars-agentpoolName format
+		nodepoolName := fmt.Sprintf("testcluster-abc12-%s", nodeClaims[i].Name)
+		
 		nodes = append(nodes, corev1.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("aks-%s-20562481-vmss_0", nodeClaims[i].Name),
 				Labels: map[string]string{
 					"agentpool":                      nodeClaims[i].Name,
 					"kubernetes.azure.com/agentpool": nodeClaims[i].Name,
+					"msft.microsoft/nodepool-name":   nodepoolName, // Custom label format
 				},
 			},
 			Spec: corev1.NodeSpec{
